@@ -1,5 +1,6 @@
 #define TI_Addr 0x0B    // Hard coded address of TI BQ78350 on SMBus / I2C
 #define sample_rate 1000000
+#define Atmel_FW_Version 01
 
 // Useful discrete values
 #define CMD_Temperature 0x08 // Temperature

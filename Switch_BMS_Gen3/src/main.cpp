@@ -112,7 +112,7 @@ char PackID[(10 * 2) + 1];
 
 uint32_t sample_timer = 100000;   // init with a large value to immediately trigger a pack data read event on boot
 
-StaticJsonDocument<470> packet;
+StaticJsonDocument<480> packet;
 char incomingBuffer[50];
 int bufferIndex = 0;
 bool NewPacket = false;
@@ -523,6 +523,7 @@ void loop() {
       packet["FETTemp"] = Pack.FETTemp;
       packet["InTemp"] = Pack.InternalTemp;
       packet["CANcol"] = CAN_collisions_detected;
+      packet["FWVer"] = Atmel_FW_Version;
       //serializeJson(packet, Serial);
       //Serial.println();
     }
