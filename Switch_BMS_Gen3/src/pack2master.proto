@@ -1,0 +1,72 @@
+syntax = "proto2";
+
+package pack2master;
+
+message pack_id
+{
+    optional uint32 TI_DeviceType = 1;
+    optional uint32 TI_DeviceNumber = 2;
+    optional uint32 TI_FirmwareVersion = 3;
+    optional uint32 TI_FirmwareType = 4;
+    optional uint32 TI_CEDV = 5;
+    optional uint32 TI_HW_Version = 6;
+    optional uint32 AVR_Device_ID = 7; 
+    optional uint32 AVR_FirmwareVersion = 8;
+    optional bytes AVR_Signature = 9;
+}
+
+message flags
+{
+    optional uint32 SafetyAlert_A = 1;
+    optional uint32 SafetyAlert_B = 2;
+    optional uint32 SafetyStatus_A = 3;
+    optional uint32 SafetyStatus_B = 4;
+    optional uint32 OpStatus_A = 5;
+    optional uint32 OpStatus_B = 6;
+    optional uint32 PFStatus_A = 7;
+    optional uint32 PFStatus_B = 8;
+    optional uint32 PFAlert = 9;
+    optional uint32 BattMode = 10;
+    optional uint32 BattStatus = 11;
+    optional uint32 TempStatus = 12;
+    optional uint32 ChargeStatus = 13;
+    optional uint32 GaugeStatus = 14;
+    optional uint32 ManufacturerStatus = 15;
+    optional uint32 AFEStatus = 16;
+    optional uint32 HostFET = 17;
+    optional uint32 GPIOStatus = 18;
+    optional uint32 GPIOControl = 19;
+}
+
+message data
+{
+    optional uint32 Voltage = 1;
+    optional uint32 VAuxVoltage = 2;
+    optional uint32 ExtAvgVoltage = 3;
+    optional uint32 Current = 4;
+    optional uint32 AvgCurrent = 5;
+    optional uint32 CycleCount = 6;
+    optional uint32 CapacityRemaining = 7;
+    optional uint32 CapacityFull = 8;
+    optional uint32 RuntimeToEmpty = 9;
+    optional uint32 AvgTimeToEmpty = 10;
+    optional uint32 AvgTimeToFull = 11;
+    optional uint32 RelativeSoC = 12;
+    optional uint32 AbsoluteSoC = 13;
+    optional uint32 SoH = 14;
+    optional uint32 Cell_1_Voltage = 15;
+    optional uint32 Cell_2_Voltage = 16;
+    optional uint32 Cell_3_Voltage = 17;
+    optional uint32 Cell_4_Voltage = 18;
+    optional uint32 Cell_5_Voltage = 19;
+    optional uint32 Cell_6_Voltage = 20;
+    optional uint32 Cell_7_Voltage = 21;
+    optional uint32 Cell_8_Voltage = 22;
+    optional uint32 Cell_9_Voltage = 23;
+    optional uint32 Cell_10_Voltage = 24;
+    optional uint32 Cell_11_Voltage = 25;
+    optional uint32 Cell_12_Voltage = 26;
+    optional uint32 Cell_13_Voltage = 27;
+    optional uint32 Cell_14_Voltage = 28;
+    optional uint32 Cell_15_Voltage = 29;
+}
