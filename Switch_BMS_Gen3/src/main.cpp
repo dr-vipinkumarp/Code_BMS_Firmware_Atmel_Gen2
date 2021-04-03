@@ -117,6 +117,7 @@ char incomingBuffer[50];
 int bufferIndex = 0;
 bool NewPacket = false;
 int CAN_collisions_detected = 0;
+int Output = 1;
 
 // This variable is made volatile because it is changed inside
 // an interrupt function
@@ -781,7 +782,11 @@ void loop() {
               addressedToMe = false;
             }
           }
-          if (PackAddr[0] == '?') addressedToMe = true; // to re-discover a silent pack
+          if (PackAddr[0] == '?') {   // if we've received a general broadcast to re-identify
+            int rand_delay = analogRead(A0);  // then wait for some random time before replying
+            delay(rand_delay);  // random-ish delay for collision avoidance
+            addressedToMe = true; // to re-discover a silent pack
+          }
           if (addressedToMe) {  // if addressed to me, set master_found flag, reply with a data packet, and make sure FETs are on
             master_found = true;
             
@@ -807,7 +812,7 @@ void loop() {
           #endif
 
             // and finally, send FET enable command to TI (with Pre- CHG/DCHG configured for safety)
-            int Output = incoming_packet["Output"];
+            Output = incoming_packet["Output"];
             if (Output) {
               //Serial.println("Output on");
               FET_ON();
