@@ -18,7 +18,6 @@
 
 //#define DEBUG_OUTPUT
 #define LIVE_DATA
-#define OUTPUT_DATA
 
 static const int BAUD_RATE = 115200;
 
@@ -113,6 +112,7 @@ char PackID[(10 * 2) + 1];
 
 uint32_t sample_timer = 100000; // init with a large value to immediately trigger a pack data read event on boot
 
+StaticJsonDocument<480> smallpacket;
 StaticJsonDocument<480> packet;
 char incomingBuffer[50];
 int bufferIndex = 0;
@@ -834,32 +834,25 @@ void loop()
             int rand_delay = 1000.0 * rand_perc;
             delay(rand_delay);
             addressedToMe = true; // to re-discover a silent pack
+
+            // send just pack ID response
+            smallpacket["PackID"] = PackID;
+            serializeJson(smallpacket, Serial); // TODO: change this from Serial to a buffer out_str
+          }
+          else
+          {
+            // send a full data packet
+            serializeJson(packet, Serial); // TODO: change this from Serial to a buffer out_str
           }
           if (addressedToMe)
           {
-            // reply with packet
-            //Serial.println("Matches my ID");
 
-            // serial2mqtt
-            // Serial.print("[1,\"src/");
-            // Serial.print(PackID);
-            // Serial.print("\",\"");
-
-#ifdef OUTPUT_DATA
-            //char out_str[600];
-            serializeJson(packet, Serial); // TODO: change this from Serial to a buffer out_str
-            //serializeJson(packet, out_str);  // TODO: change this from Serial to a buffer out_str
-            //Serial.print(out_str);
-            // flush incoming serial buffer and/or compare against outgoing
             Serial.flush();
             delay(10);
             while (Serial.available())
             {
               Serial.read();
             }
-            //Serial.print("\",0,1]");
-            //Serial.print("\"]");
-#endif
 
             // and finally, send FET enable command to TI (with Pre- CHG/DCHG configured for safety)
             Output = incoming_packet["Output"];
@@ -867,23 +860,11 @@ void loop()
             {
               //Serial.println("Output on");
               FET_ON();
-              // // send FET ON command
-              // byte State = 0x03;
-              // //TI_Read(CMD_FET_CONTROL, 1, State);
-              // //State |= 1UL << 2;      // set bit 1 to enable DCHG FET
-              // TI_Write(CMD_FET_CONTROL, 2, CMD_FET_CONTROL_ACCESS);
-              // TI_Write(CMD_FET_CONTROL, 1, State);
             }
             else if (!Output)
             {
               //Serial.println("Output off");
               FET_OFF();
-              // send FET OFF command
-              // byte State = 0x01;
-              // //TI_Read(CMD_FET_CONTROL, 1, State);
-              // //State &= ~(1UL << 2);   // clear bit 1 to disable DCHG FET
-              // TI_Write(CMD_FET_CONTROL, 2, CMD_FET_CONTROL_ACCESS);
-              // TI_Write(CMD_FET_CONTROL, 1, State);
             }
 
             //{"PackID":"5042394E3530690E1023","Output":0}
