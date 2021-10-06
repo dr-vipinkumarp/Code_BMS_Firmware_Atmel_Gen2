@@ -20,11 +20,11 @@
 #define LIVE_DATA
 
 static const uint32_t BAUD_RATE = 115200;
-static const uint32_t BYTES_PER_MILLIS = BAUD_RATE / 1000 / 10;                              // assuming 10 bits per byte for serial framing overhead
-static const uint32_t DISCOVERY_MSG_LENGTH = 33;                                             // // {"PackID":"5042394E3530690E1023"}
-static const uint32_t DISCOVERY_MSG_SEND_TIME = DISCOVERY_MSG_LENGTH / BYTES_PER_MILLIS * 2; // double the window size to ensure no overlaps
-static const uint32_t DISCOVERY_WINDOW_MAX_TIME = 2500;                                      // discovery window is 2.5 seconds long
-static const uint32_t DISCOVERY_WINDOW_MAX_SLOT = DISCOVERY_WINDOW_MAX_TIME / DISCOVERY_MSG_SEND_TIME;
+static const uint8_t BYTES_PER_MILLIS = BAUD_RATE / 1000 / 10;                              // assuming 10 bits per byte for serial framing overhead
+static const uint8_t DISCOVERY_MSG_LENGTH = 33;                                             // // {"PackID":"5042394E3530690E1023"}
+static const uint8_t DISCOVERY_MSG_SEND_TIME = DISCOVERY_MSG_LENGTH / BYTES_PER_MILLIS * 2; // double the window size to ensure no overlaps
+static const uint16_t DISCOVERY_WINDOW_MAX_TIME = 2500;                                     // discovery window is 2.5 seconds long
+static const uint16_t DISCOVERY_WINDOW_MAX_SLOT = DISCOVERY_WINDOW_MAX_TIME / DISCOVERY_MSG_SEND_TIME;
 
 struct Version_Info
 {
