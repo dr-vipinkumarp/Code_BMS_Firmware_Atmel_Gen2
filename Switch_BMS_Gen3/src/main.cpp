@@ -19,7 +19,7 @@
 //#define DEBUG_OUTPUT
 #define LIVE_DATA
 
-static const int BAUD_RATE = 115200;
+uint32_t BAUD_RATE = 115200u;
 
 struct Version_Info
 {
