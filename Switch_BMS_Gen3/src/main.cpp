@@ -476,6 +476,16 @@ void enterSleep()
 }
 
 //================================================================
+void initRNG() {
+  // initiate random number generator
+  // get the last 4 bits from the AVR_Signature and convert them to an int
+  // xor that int with a random value from the seed
+  int serial_lsb = *((int *)&Versions.AVR_Signature[10 - 4 - 1]); // 10-4-1 == index to last 4 bits
+  int rand_seed = analogRead(A0) ^ serial_lsb;
+  randomSeed(rand_seed);
+}
+
+//================================================================
 void setup()
 {
 
@@ -517,12 +527,7 @@ void setup()
 
   Serial.begin(BAUD_RATE);
 
-  // initiate random number generator
-  // get the last 4 bits from the AVR_Signature and convert them to an int
-  // xor that int with a random value from the seed
-  int serial_lsb = *((int *)&Versions.AVR_Signature[10 - 4 - 1]); // 10-4-1 == index to last 4 bits
-  int rand_seed = analogRead(A0) ^ serial_lsb;
-  randomSeed(rand_seed);
+  initRNG();
 
   Wire.begin(); // connection to TI BMS Chipset
   //setupWatchDogTimer();   // for waking up from sleep
@@ -837,6 +842,7 @@ void loop()
           }
           if (PackAddr[0] == '?')
           { // pick a random slot to send our msg in
+            initRNG(); // reinit RNG, as if we've collided, it might be because we have the same random seed as another pack
             uint32_t chosen_slot = random(0, DISCOVERY_WINDOW_MAX_SLOT);
             uint32_t rand_delay = DISCOVERY_MSG_SEND_TIME * chosen_slot;
             delay(rand_delay);
