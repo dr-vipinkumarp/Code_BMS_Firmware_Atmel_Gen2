@@ -518,8 +518,11 @@ void setup()
   Serial.begin(BAUD_RATE);
 
   // initiate random number generator
-  int rand_seed = analogRead(A0);
-  srand(rand_seed);
+  // get the last 4 bits from the AVR_Signature and convert them to an int
+  // xor that int with a random value from the seed
+  int serial_lsb = *((int *)&Versions.AVR_Signature[10 - 4 - 1]); // 10-4-1 == index to last 4 bits
+  int rand_seed = analogRead(A0) ^ serial_lsb;
+  randomSeed(rand_seed);
 
   Wire.begin(); // connection to TI BMS Chipset
   //setupWatchDogTimer();   // for waking up from sleep
