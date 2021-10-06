@@ -69,8 +69,8 @@ struct Pack_State
   uint16_t Voltage;
   uint16_t VAuxVoltage;
   uint16_t ExtAvgVoltage;
-  uint16_t Current;    // signed int
-  uint16_t AvgCurrent; // signed int
+  int16_t Current;    // signed int Changed by Viv to signed
+  int16_t AvgCurrent; // signed int Changed by Viv to signed
   uint16_t CycleCount;
   uint16_t CapacityRemaining;
   uint16_t CapacityFull;
@@ -513,10 +513,9 @@ void setup()
 
   Serial.begin(BAUD_RATE);
 
-#ifdef DEBUG_OUTPUT
-  Serial.print("PackID: ");
-  Serial.println(PackID);
-#endif
+  // initiate random number generator
+  int rand_seed = analogRead(A0);
+  srand(rand_seed);
 
   Wire.begin(); // connection to TI BMS Chipset
   //setupWatchDogTimer();   // for waking up from sleep
@@ -884,10 +883,13 @@ void loop()
             }
           }
           if (PackAddr[0] == '?')
-          {                                  // if we've received a general broadcast to re-identify
-            int rand_delay = analogRead(A0); // then wait for some random time before replying
-            delay(rand_delay);               // random-ish delay for collision avoidance
-            addressedToMe = true;            // to re-discover a silent pack
+          { // if we've received a general broadcast to re-identify
+            // int rand_delay = analogRead(A0);  // then wait for some random time before replying
+            // delay(rand_delay);  // random-ish delay for collision avoidance
+            float rand_perc = ((float)rand()) / ((float)RAND_MAX);
+            int rand_delay = 1000.0 * rand_perc;
+            delay(rand_delay);
+            addressedToMe = true; // to re-discover a silent pack
           }
           if (addressedToMe)
           { // if addressed to me, set master_found flag, reply with a data packet, and make sure FETs are on
