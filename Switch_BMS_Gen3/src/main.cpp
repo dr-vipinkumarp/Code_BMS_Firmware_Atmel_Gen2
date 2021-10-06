@@ -109,7 +109,6 @@ struct Pack_State
 struct Version_Info Versions;
 struct Pack_State Pack;
 
-bool master_found = false;
 char PackID[(10 * 2) + 1];
 
 uint32_t sample_timer = 100000; // init with a large value to immediately trigger a pack data read event on boot
@@ -118,7 +117,6 @@ StaticJsonDocument<480> packet;
 char incomingBuffer[50];
 int bufferIndex = 0;
 bool NewPacket = false;
-int CAN_collisions_detected = 0;
 int Output = 1;
 
 // This variable is made volatile because it is changed inside
@@ -610,7 +608,6 @@ void loop()
       packet["CellTemp"] = Pack.CellTemp;
       packet["FETTemp"] = Pack.FETTemp;
       packet["InTemp"] = Pack.InternalTemp;
-      packet["CANcol"] = CAN_collisions_detected;
       packet["FWVer"] = Atmel_FW_Version;
       //serializeJson(packet, Serial);
       //Serial.println();
@@ -620,57 +617,6 @@ void loop()
       // flag fault with BMS
     }
 #endif
-
-    if (!master_found)
-    { // if no master yet, chirp our own ID on a semi-random delay
-
-      // first make sure FET outputs are definitely off
-      // send FET OFF command
-      // byte State = 0x01;
-      // //TI_Read(CMD_FET_CONTROL, 1, State);
-      // //State &= ~(1UL << 2);   // clear bit 1 to disable DCHG FET
-      // TI_Write(CMD_FET_CONTROL, 2, CMD_FET_CONTROL_ACCESS);
-      // TI_Write(CMD_FET_CONTROL, 1, State);
-
-      int rand_delay = analogRead(A0);
-      delay(rand_delay); // random-ish delay for collision avoidance
-
-      // serial2mqtt
-      // Serial.print("[0,\"dst/");
-      // Serial.print(PackID);
-      // Serial.println("\"]");
-
-      // JSON output with CAN collision detection
-      char out_str[50];
-      sprintf(out_str, "{\"PackID\":\"%s\"}", PackID);
-      Serial.print(out_str);
-      Serial.flush(); // finish sending
-      delay(10);
-      char in_str[50];
-      int i = 0;
-      while (Serial.available())
-      {
-        if (i <= 49)
-        {
-          in_str[i] = Serial.read();
-        }
-        else
-        {
-          Serial.read();
-        }
-        i++;
-      }
-      bool collision = false;
-      for (i = 0; i == 49; i++)
-      {
-        if (out_str[i] != in_str[i])
-          collision = true;
-      }
-      if (collision)
-      {
-        CAN_collisions_detected++;
-      }
-    }
 
 #ifdef DEBUG_OUTPUT
     Serial.println();
@@ -682,8 +628,6 @@ void loop()
     Serial.print(F("TI FW Version: \t\t"));
     Serial.println(Versions.TI_FirmwareVersion, HEX);
 
-    Serial.print(F("Master Found: \t\t"));
-    Serial.println(master_found);
     Serial.print(F("Safety Alert AB & CD: \t"));
     Serial.print(Pack.SafetyAlert_AB, HEX);
     Serial.print(F(","));
@@ -892,9 +836,7 @@ void loop()
             addressedToMe = true; // to re-discover a silent pack
           }
           if (addressedToMe)
-          { // if addressed to me, set master_found flag, reply with a data packet, and make sure FETs are on
-            master_found = true;
-
+          {
             // reply with packet
             //Serial.println("Matches my ID");
 
