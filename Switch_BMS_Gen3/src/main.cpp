@@ -273,7 +273,7 @@ bool PullData()
       {
         Pack.OpStatus_A = (InBuff[2] << 8) + InBuff[1]; // Operational Status
         Pack.OpStatus_B = (InBuff[4] << 8) + InBuff[3];
-        if (TI_Read(CMD_PFStatus, LEN_IN_OpStatus, InBuff))
+        if (TI_Read(CMD_PFStatus, LEN_IN_PFStatus, InBuff))
         {
           Pack.PFStatus_AB = (InBuff[2] << 8) + InBuff[1]; // Permanent Fail Status
           Pack.PFStatus_CD = (InBuff[4] << 8) + InBuff[3];
