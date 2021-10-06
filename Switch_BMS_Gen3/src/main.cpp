@@ -19,7 +19,12 @@
 //#define DEBUG_OUTPUT
 #define LIVE_DATA
 
-static const int BAUD_RATE = 115200;
+static const uint32_t BAUD_RATE = 115200;
+static const uint8_t BYTES_PER_MILLIS = BAUD_RATE / 1000 / 10;                              // assuming 10 bits per byte for serial framing overhead
+static const uint8_t DISCOVERY_MSG_LENGTH = 33;                                             // // {"PackID":"5042394E3530690E1023"}
+static const uint8_t DISCOVERY_MSG_SEND_TIME = DISCOVERY_MSG_LENGTH / BYTES_PER_MILLIS * 2; // double the window size to ensure no overlaps
+static const uint16_t DISCOVERY_WINDOW_MAX_TIME = 2500;                                     // discovery window is 2.5 seconds long
+static const uint16_t DISCOVERY_WINDOW_MAX_SLOT = DISCOVERY_WINDOW_MAX_TIME / DISCOVERY_MSG_SEND_TIME;
 
 struct Version_Info
 {
@@ -471,6 +476,17 @@ void enterSleep()
 }
 
 //================================================================
+void initRNG()
+{
+  // initiate random number generator
+  // get the last 4 bits from the AVR_Signature and convert them to an int
+  // xor that int with a random value from the seed
+  int serial_lsb = *((int *)&Versions.AVR_Signature[10 - 4 - 1]); // 10-4-1 == index to last 4 bits
+  int rand_seed = analogRead(A0) ^ serial_lsb;
+  randomSeed(rand_seed);
+}
+
+//================================================================
 void setup()
 {
 
@@ -512,9 +528,7 @@ void setup()
 
   Serial.begin(BAUD_RATE);
 
-  // initiate random number generator
-  int rand_seed = analogRead(A0);
-  srand(rand_seed);
+  initRNG();
 
   Wire.begin(); // connection to TI BMS Chipset
   //setupWatchDogTimer();   // for waking up from sleep
@@ -828,12 +842,12 @@ void loop()
             }
           }
           if (PackAddr[0] == '?')
-          { // if we've received a general broadcast to re-identify
-            // int rand_delay = analogRead(A0);  // then wait for some random time before replying
-            // delay(rand_delay);  // random-ish delay for collision avoidance
-            float rand_perc = ((float)rand()) / ((float)RAND_MAX);
-            int rand_delay = 1000.0 * rand_perc;
+          {            // pick a random slot to send our msg in
+            initRNG(); // reinit RNG, as if we've collided, it might be because we have the same random seed as another pack
+            uint32_t chosen_slot = random(0, DISCOVERY_WINDOW_MAX_SLOT);
+            uint32_t rand_delay = DISCOVERY_MSG_SEND_TIME * chosen_slot;
             delay(rand_delay);
+
             addressedToMe = true; // to re-discover a silent pack
 
             // send just pack ID response
