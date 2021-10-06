@@ -112,7 +112,7 @@ char PackID[(10 * 2) + 1];
 
 uint32_t sample_timer = 100000; // init with a large value to immediately trigger a pack data read event on boot
 
-StaticJsonDocument<480> smallpacket;
+StaticJsonDocument<40> smallpacket;
 StaticJsonDocument<480> packet;
 char incomingBuffer[50];
 int bufferIndex = 0;
@@ -507,6 +507,7 @@ void setup()
     ptr += sprintf(ptr, "%02X", Versions.AVR_Signature[i]);
   }
   packet["PackID"] = PackID;
+  smallpacket["PackID"] = PackID;
   // {"PackID","5042394E3530690E1023"}
 
   Serial.begin(BAUD_RATE);
@@ -836,7 +837,6 @@ void loop()
             addressedToMe = true; // to re-discover a silent pack
 
             // send just pack ID response
-            smallpacket["PackID"] = PackID;
             serializeJson(smallpacket, Serial); // TODO: change this from Serial to a buffer out_str
           }
           else
