@@ -841,8 +841,11 @@ void loop()
           }
           else
           {
-            // send a full data packet
-            serializeJson(packet, Serial); // TODO: change this from Serial to a buffer out_str
+            if (addressedToMe)
+            {
+              // send a full data packet
+              serializeJson(packet, Serial); // TODO: change this from Serial to a buffer out_str
+            }
           }
           if (addressedToMe)
           {
