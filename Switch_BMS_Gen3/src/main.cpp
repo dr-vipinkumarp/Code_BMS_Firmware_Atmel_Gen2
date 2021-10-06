@@ -476,7 +476,8 @@ void enterSleep()
 }
 
 //================================================================
-void initRNG() {
+void initRNG()
+{
   // initiate random number generator
   // get the last 4 bits from the AVR_Signature and convert them to an int
   // xor that int with a random value from the seed
@@ -841,7 +842,7 @@ void loop()
             }
           }
           if (PackAddr[0] == '?')
-          { // pick a random slot to send our msg in
+          {            // pick a random slot to send our msg in
             initRNG(); // reinit RNG, as if we've collided, it might be because we have the same random seed as another pack
             uint32_t chosen_slot = random(0, DISCOVERY_WINDOW_MAX_SLOT);
             uint32_t rand_delay = DISCOVERY_MSG_SEND_TIME * chosen_slot;
