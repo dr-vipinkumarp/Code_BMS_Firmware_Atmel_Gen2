@@ -883,12 +883,12 @@ void loop()
             if (Output)
             {
               //Serial.println("Output on");
-              FET_ON();
+              ti.fetOn();
             }
             else if (!Output)
             {
               //Serial.println("Output off");
-              FET_OFF();
+              ti.fetOff();
             }
 
             //{"PackID":"5042394E3530690E1023","Output":0}
