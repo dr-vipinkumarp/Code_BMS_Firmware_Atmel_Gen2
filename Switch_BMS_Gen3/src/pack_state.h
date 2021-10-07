@@ -16,6 +16,8 @@ public:
     word safetyStatusCD();
     word opStatusA();
     word opStatusB();
+    word pfAlertAB();
+    word pfAlertCD();
     word pfStatusAB();
     word pfStatusCD();
     word battMode();
@@ -77,6 +79,7 @@ private:
     byte _safetyAlert[LEN_IN_SafetyAlert];
     byte _safetyStatus[LEN_IN_SafetyStatus];
     byte _opStatus[LEN_IN_OpStatus];
+    byte _pfAlert[LEN_IN_PFAlert];
     byte _pfStatus[LEN_IN_PFStatus];
     byte _battMode[LEN_IN_BattMode];
     byte _battStatus[LEN_IN_BattStatus];

@@ -572,9 +572,10 @@ void loop()
       packet["SS_CD"] = packState.safetyStatusCD();
       packet["OS_A"] = packState.opStatusA();
       packet["OS_B"] = packState.opStatusB();
+      packet["PFA_AB"] = packState.pfAlertAB();
+      packet["PFA_CD"] = packState.pfAlertCD();
       packet["PFS_AB"] = packState.pfStatusAB();
       packet["PFS_CD"] = packState.pfStatusCD();
-      // packet["PFA"] = Pack.PFAlert;
       packet["BM"] = packState.battMode();
       packet["BS"] = packState.battStatus();
       packet["TS"] = packState.tempStatus();

@@ -37,6 +37,16 @@ word PackState::opStatusB()
     return (_opStatus[4] << 8) + _opStatus[3];
 }
 
+word PackState::pfAlertAB()
+{
+    return (_pfAlert[2] << 8) + _pfAlert[1];
+}
+
+word PackState::pfAlertCD()
+{
+    return (_pfAlert[4] << 8) + _pfAlert[3];
+}
+
 word PackState::pfStatusAB()
 {
     return (_pfStatus[2] << 8) + _pfStatus[1];
@@ -279,6 +289,7 @@ void PackState::refresh()
     _ti.read(CMD_SafetyAlert, LEN_IN_SafetyAlert, _safetyAlert);
     _ti.read(CMD_SafetyStatus, LEN_IN_SafetyStatus, _safetyStatus);
     _ti.read(CMD_OpStatus, LEN_IN_OpStatus, _opStatus);
+    _ti.read(CMD_PFAlert, LEN_IN_PFAlert, _pfAlert);
     _ti.read(CMD_PFStatus, LEN_IN_PFStatus, _pfStatus);
     _ti.read(CMD_BattMode, LEN_IN_BattMode, _battMode);
     _ti.read(CMD_BattStatus, LEN_IN_BattStatus, _battStatus);
