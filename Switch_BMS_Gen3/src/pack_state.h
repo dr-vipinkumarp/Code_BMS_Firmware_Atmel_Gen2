@@ -7,6 +7,8 @@ class PackState
 public:
     PackState(const TI &ti);
 
+    void refresh();
+
     // safety variables - priority items
     word safetyAlertAB();
     word safetyAlertCD();
@@ -99,6 +101,4 @@ private:
     byte _soh[LEN_IN_SoH];
     byte _daStatus1[LEN_IN_DAStatus1];
     byte _daStatus2[LEN_IN_DAStatus2];
-
-    void _refreshBuffers();
 };

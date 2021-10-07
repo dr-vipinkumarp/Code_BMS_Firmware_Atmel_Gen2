@@ -564,6 +564,8 @@ void loop()
 #ifdef LIVE_DATA
     if (PullData())
     {
+      packState.refresh();
+
       packet["SA_AB"] = packState.safetyAlertAB();
       packet["SA_CD"] = packState.safetyAlertCD();
       packet["SS_AB"] = packState.safetyStatusAB();

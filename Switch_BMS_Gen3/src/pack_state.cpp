@@ -5,7 +5,6 @@
 
 PackState::PackState(const TI &ti) : _ti(ti)
 {
-    _refreshBuffers();
 }
 
 word PackState::safetyAlertAB()
@@ -275,7 +274,7 @@ uint16_t PackState::internalTemp()
     return (_daStatus2[16] << 8) + _daStatus2[15];
 }
 
-void PackState::_refreshBuffers()
+void PackState::refresh()
 {
     _ti.read(CMD_SafetyAlert, LEN_IN_SafetyAlert, _safetyAlert);
     _ti.read(CMD_SafetyStatus, LEN_IN_SafetyStatus, _safetyStatus);
