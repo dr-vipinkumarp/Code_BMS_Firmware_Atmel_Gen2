@@ -6,19 +6,16 @@
 
 #include <defines.h>
 #include <pack_state.h>
+#include <packet.h>
 
 #include <ArduinoJson.h>
 
-//#include <MqttSerial.h>
-//#include <limero.h>
-
-// #include <pack2master.pb.h>
-// #include <pb.h>
-// #include <pb_encode.h>
-// #include <pb_decode.h>
-
-//#define DEBUG_OUTPUT
+// #define DEBUG_OUTPUT
 #define LIVE_DATA
+
+#ifdef DEBUG_OUTPUT
+#include <debug.h>
+#endif
 
 static const uint32_t BAUD_RATE = 115200;
 static const uint8_t BYTES_PER_MILLIS = BAUD_RATE / 1000 / 10;                              // assuming 10 bits per byte for serial framing overhead
@@ -29,14 +26,11 @@ static const uint16_t DISCOVERY_WINDOW_MAX_SLOT = DISCOVERY_WINDOW_MAX_TIME / DI
 
 TI ti(TI_Addr);
 PackState packState(ti);
-
-char PackID[(10 * 2) + 1];
+Packet packet;
 
 byte AVR_Signature[10];
 uint32_t sample_timer = 100000; // init with a large value to immediately trigger a pack data read event on boot
 
-StaticJsonDocument<40> smallpacket;
-StaticJsonDocument<480> packet;
 char incomingBuffer[50];
 int bufferIndex = 0;
 bool NewPacket = false;
@@ -129,10 +123,8 @@ void initRNG()
   randomSeed(rand_seed);
 }
 
-//================================================================
-void setup()
+void getAvrSignature()
 {
-
 #define SIGRD 5
 #if defined(SIGRD) || defined(RSIG)
   // Versions.AVR_Dev_ID[0] = boot_signature_byte_get(0);
@@ -143,31 +135,14 @@ void setup()
     AVR_Signature[i - 14] = boot_signature_byte_get(i); // Read my own unique ID
   }
 #endif
+}
 
-  char *ptr = &PackID[0];
+//================================================================
+void setup()
+{
+  getAvrSignature();
 
-  for (int i = 0; i < 10; i++)
-  {
-    /* "sprintf" converts each byte in the "buf" array into a 2 hex string
-      * characters appended with a null byte, for example 10 => "0A\0".
-      *
-      * This string would then be added to the output array starting from the
-      * position pointed at by "ptr". For example if "ptr" is pointing at the 0
-      * index then "0A\0" would be written as output[0] = '0', output[1] = 'A' and
-      * output[2] = '\0'.
-      *
-      * "sprintf" returns the number of chars in its output excluding the null
-      * byte, in our case this would be 2. So we move the "ptr" location two
-      * steps ahead so that the next hex string would be written at the new
-      * location, overriding the null byte from the previous hex string.
-      *
-      * We don't need to add a terminating null byte because it's been already
-      * added for us from the last hex string. */
-    ptr += sprintf(ptr, "%02X", AVR_Signature[i]);
-  }
-  packet["PackID"] = PackID;
-  smallpacket["PackID"] = PackID;
-  // {"PackID","5042394E3530690E1023"}
+  packet.setAvrSignature(AVR_Signature);
 
   Serial.begin(BAUD_RATE);
 
@@ -182,6 +157,42 @@ void setup()
   // else {
   //   // flag fault with BMS
   // }
+}
+
+bool isAddressedToMe(char *incomingAddress)
+{
+  const char *myAddr = packet.packId();
+
+  // if packet addressed to me
+  bool addressedToMe = true;
+
+  for (int i = 0; i < PACK_ID_SIZE - 1; i++)
+  {
+    if (incomingAddress[i] != myAddr[i])
+    {
+      addressedToMe = false;
+    }
+  }
+
+  return addressedToMe;
+}
+
+void handleIdentify()
+{
+  // pick a random slot to send our msg in
+  initRNG(); // reinit RNG, as if we've collided, it might be because we have the same random seed as another pack
+  uint32_t chosen_slot = random(0, DISCOVERY_WINDOW_MAX_SLOT);
+  uint32_t rand_delay = DISCOVERY_MSG_SEND_TIME * chosen_slot;
+  delay(rand_delay);
+
+  // send just pack ID response
+  serializeJson(packet.identityPacket(), Serial); // TODO: change this from Serial to a buffer out_str
+}
+
+void handleDataRequest()
+{
+  // send a full data packet
+  serializeJson(packet.dataPacket(packState), Serial); // TODO: change this from Serial to a buffer out_str
 }
 
 //================================================================
@@ -202,226 +213,10 @@ void loop()
 
 #ifdef LIVE_DATA
     packState.refresh();
-
-    packet["SA_AB"] = packState.safetyAlertAB();
-    packet["SA_CD"] = packState.safetyAlertCD();
-    packet["SS_AB"] = packState.safetyStatusAB();
-    packet["SS_CD"] = packState.safetyStatusCD();
-    packet["OS_A"] = packState.opStatusA();
-    packet["OS_B"] = packState.opStatusB();
-    packet["PFA_AB"] = packState.pfAlertAB();
-    packet["PFA_CD"] = packState.pfAlertCD();
-    packet["PFS_AB"] = packState.pfStatusAB();
-    packet["PFS_CD"] = packState.pfStatusCD();
-    packet["BM"] = packState.battMode();
-    packet["BS"] = packState.battStatus();
-    packet["TS"] = packState.tempStatus();
-    packet["CS"] = packState.chgStatus();
-    packet["GS"] = packState.gaugeStatus();
-    packet["MS"] = packState.mfrStatus();
-    packet["AFES"] = packState.afeStatus();
-
-    // control variables - influence hardware operations
-    packet["HFET"] = packState.hostFET();
-    packet["GPIOS"] = packState.gpioStatus();
-    packet["GPIOC"] = packState.gpioControl();
-
-    // data variables - for reporting
-    //uint16_t Temperature;
-    packet["PV"] = packState.voltage();
-    packet["VAV"] = packState.vAuxVoltage();
-    packet["EAvgV"] = packState.extAvgVoltage();
-    packet["C"] = packState.current();
-    packet["AvgC"] = packState.avgCurrent();
-    packet["Cycles"] = packState.cycleCount();
-    packet["CapRemain"] = packState.capacityRemaining();
-    packet["CapFull"] = packState.capacityFull();
-    packet["RTE"] = packState.runtimeToEmpty();
-    packet["ATTE"] = packState.avgTimeToEmpty();
-    packet["ATTF"] = packState.avgTimeToFull();
-
-    packet["RelSoC"] = packState.relativeStateOfCharge();
-    packet["AbsSoC"] = packState.absoluteStateOfCharge();
-    packet["SoH"] = packState.stateOfHealth();
-
-    packet["CV1"] = packState.cellVoltage1();
-    packet["CV2"] = packState.cellVoltage2();
-    packet["CV3"] = packState.cellVoltage3();
-    packet["CV4"] = packState.cellVoltage4();
-    packet["CV5"] = packState.cellVoltage5();
-    packet["CV6"] = packState.cellVoltage6();
-    packet["CV7"] = packState.cellVoltage7();
-    packet["CV8"] = packState.cellVoltage8();
-    packet["CV9"] = packState.cellVoltage9();
-    packet["CV10"] = packState.cellVoltage10();
-    packet["CV11"] = packState.cellVoltage11();
-    packet["CV12"] = packState.cellVoltage12();
-    packet["CV13"] = packState.cellVoltage13();
-    packet["CV14"] = packState.cellVoltage14();
-    packet["CV15"] = packState.cellVoltage15();
-
-    packet["TS1Temp"] = packState.ts1Temp();
-    packet["TS2Temp"] = packState.ts2Temp();
-    packet["TS3Temp"] = packState.ts3Temp();
-    packet["CellTemp"] = packState.cellTemp();
-    packet["FETTemp"] = packState.fetTemp();
-    packet["InTemp"] = packState.internalTemp();
-    packet["FWVer"] = Atmel_FW_Version;
-
 #endif
 
 #ifdef DEBUG_OUTPUT
-    Serial.println();
-
-    Serial.print(F("Device Type: \t\t"));
-    Serial.println(Versions.TI_DevType, HEX);
-    Serial.print(F("Device Number: \t\t"));
-    Serial.println(Versions.TI_DevNum, HEX);
-    Serial.print(F("TI FW Version: \t\t"));
-    Serial.println(Versions.TI_FirmwareVersion, HEX);
-
-    Serial.print(F("Safety Alert AB & CD: \t"));
-    Serial.print(Pack.SafetyAlert_AB, HEX);
-    Serial.print(F(","));
-    Serial.println(Pack.SafetyAlert_CD, HEX);
-
-    Serial.print(F("Safety Status AB & CD: \t"));
-    Serial.print(Pack.SafetyStatus_AB, HEX);
-    Serial.print(F(","));
-    Serial.println(Pack.SafetyStatus_CD, HEX);
-
-    Serial.print(F("Op Status A & B: \t"));
-    Serial.printf("%04X", Pack.OpStatus_A);
-    //Serial.print(Pack.OpStatus_A, HEX);
-    Serial.print(F(","));
-    Serial.println(Pack.OpStatus_B, HEX);
-
-    Serial.print(F("PermaFail Stat AB & CD:\t"));
-    Serial.print(Pack.PFStatus_AB, HEX);
-    Serial.print(F(","));
-    Serial.println(Pack.PFStatus_CD, HEX);
-
-    Serial.print(F("PermaFail Alert: \t"));
-    Serial.println(Pack.PFAlert, HEX);
-
-    Serial.print(F("Batt Mode: \t\t"));
-    Serial.println(Pack.BattMode, HEX);
-
-    Serial.print(F("Batt Status: \t\t"));
-    Serial.println(Pack.BattStatus, HEX);
-
-    Serial.print(F("Temperature Status: \t"));
-    Serial.println(Pack.TempStatus, HEX);
-
-    Serial.print(F("Charge Status: \t\t"));
-    Serial.println(Pack.ChgStatus, HEX);
-
-    Serial.print(F("Gauge Status: \t\t"));
-    Serial.println(Pack.GaugeStatus, HEX);
-
-    Serial.print(F("Manufacturer Status: \t"));
-    Serial.println(Pack.MfrStatus, HEX);
-
-    Serial.print(F("AnalogFrontEnd Status: \t"));
-    Serial.println(Pack.AFEStatus, HEX);
-
-    Serial.print(F("HostFET: \t\t"));
-    Serial.println(Pack.HostFET, HEX);
-
-    Serial.print(F("GPIO Status: \t\t"));
-    Serial.println(Pack.GPIOStatus, HEX);
-
-    Serial.print(F("GPIO Control: \t\t"));
-    Serial.println(Pack.GPIOControl, HEX);
-
-    Serial.print(F("Pack Voltage: \t\t"));
-    Serial.println(Pack.Voltage);
-
-    Serial.print(F("Aux Voltage: \t\t"));
-    Serial.println(Pack.VAuxVoltage);
-
-    Serial.print(F("Cell Avg Voltage: \t"));
-    Serial.println(Pack.ExtAvgVoltage);
-
-    Serial.print(F("Pack Current: \t\t"));
-    Serial.println(Pack.Current);
-
-    Serial.print(F("Avg Current: \t\t"));
-    Serial.println(Pack.AvgCurrent);
-
-    Serial.print(F("Cycle Count: \t\t"));
-    Serial.println(Pack.CycleCount);
-
-    Serial.print(F("Remaining Capacity: \t"));
-    Serial.println(Pack.CapacityRemaining);
-
-    Serial.print(F("Full Capacity: \t\t"));
-    Serial.println(Pack.CapacityFull);
-
-    Serial.print(F("Runtime to Empty: \t"));
-    Serial.println(Pack.RuntimeToEmpty);
-
-    Serial.print(F("Avg Time to Empty: \t"));
-    Serial.println(Pack.AvgTimeToEmpty);
-
-    Serial.print(F("Avg Time to Full: \t"));
-    Serial.println(Pack.AvgTimeToFull);
-
-    Serial.print(F("Relative SoC: \t\t"));
-    Serial.println(Pack.RelativeStateOfCharge);
-
-    Serial.print(F("Absolute SoC: \t\t"));
-    Serial.println(Pack.AbsoluteStateOfCharge);
-
-    Serial.print(F("State of Health: \t"));
-    Serial.println(Pack.StateOfHealth);
-
-    Serial.print(F("Cell Voltages: \t\t"));
-    Serial.print(Pack.CellVoltage1);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage2);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage3);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage4);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage5);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage6);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage7);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage8);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage9);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage10);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage11);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage12);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage13);
-    Serial.print(F(", "));
-    Serial.print(Pack.CellVoltage14);
-    Serial.print(F(", "));
-    Serial.println(Pack.CellVoltage15);
-
-    Serial.print(F("Temperatures: \t\t"));
-    Serial.print(Pack.TS1Temp);
-    Serial.print(F(", "));
-    Serial.print(Pack.TS2Temp);
-    Serial.print(F(", "));
-    Serial.println(Pack.TS3Temp);
-
-    Serial.print(F("Cell Temp: \t\t"));
-    Serial.println(Pack.CellTemp);
-
-    Serial.print(F("FET Temp: \t\t"));
-    Serial.println(Pack.FETTemp);
-
-    Serial.print(F("Internal Temp: \t\t"));
-    Serial.println(Pack.InternalTemp);
+    printDebug(packState, ti);
 #endif
   }
   sample_timer++;
@@ -465,67 +260,48 @@ void loop()
         //   return;
         // }
 
-        if (!error)
+        if (error)
+          continue; // proceed with next iteration of loop
+
+        char *PackAddr = incoming_packet["PackID"];
+        bool addressedToMe = isAddressedToMe(PackAddr);
+
+        if (PackAddr[0] == '?')
         {
-          const char *PackAddr = incoming_packet["PackID"];
-
-          // if packet addressed to me
-          bool addressedToMe = true;
-          for (int i = 0; i < sizeof(PackID) - 1; i++)
-          {
-            if (PackAddr[i] != PackID[i])
-            {
-              addressedToMe = false;
-            }
-          }
-          if (PackAddr[0] == '?')
-          {            // pick a random slot to send our msg in
-            initRNG(); // reinit RNG, as if we've collided, it might be because we have the same random seed as another pack
-            uint32_t chosen_slot = random(0, DISCOVERY_WINDOW_MAX_SLOT);
-            uint32_t rand_delay = DISCOVERY_MSG_SEND_TIME * chosen_slot;
-            delay(rand_delay);
-
-            addressedToMe = true; // to re-discover a silent pack
-
-            // send just pack ID response
-            serializeJson(smallpacket, Serial); // TODO: change this from Serial to a buffer out_str
-          }
-          else
-          {
-            if (addressedToMe)
-            {
-              // send a full data packet
-              serializeJson(packet, Serial); // TODO: change this from Serial to a buffer out_str
-            }
-          }
-          if (addressedToMe)
-          {
-
-            Serial.flush();
-            delay(10);
-            while (Serial.available())
-            {
-              Serial.read();
-            }
-
-            // and finally, send FET enable command to TI (with Pre- CHG/DCHG configured for safety)
-            Output = incoming_packet["Output"];
-            if (Output)
-            {
-              //Serial.println("Output on");
-              ti.fetOn();
-            }
-            else if (!Output)
-            {
-              //Serial.println("Output off");
-              ti.fetOff();
-            }
-
-            //{"PackID":"5042394E3530690E1023","Output":0}
-            //{"PackID":"5042394E3530690E1023","Output":1}
-            //{"PackID":"?"}
-          }
+          addressedToMe = true; // to re-discover a silent pack
+          handleIdentify();
         }
+        else if (addressedToMe)
+        {
+          handleDataRequest();
+        }
+
+        if (!addressedToMe)
+          continue;
+
+        Serial.flush();
+        delay(10);
+        while (Serial.available())
+        {
+          Serial.read();
+        }
+
+        // and finally, send FET enable command to TI (with Pre- CHG/DCHG configured for safety)
+        Output = incoming_packet["Output"];
+        if (Output)
+        {
+          //Serial.println("Output on");
+          ti.fetOn();
+        }
+        else if (!Output)
+        {
+          //Serial.println("Output off");
+          ti.fetOff();
+        }
+
+        //{"PackID":"5042394E3530690E1023","Output":0}
+        //{"PackID":"5042394E3530690E1023","Output":1}
+        //{"PackID":"?"}
       }
     }
   }
