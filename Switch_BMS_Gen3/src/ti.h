@@ -1,3 +1,4 @@
+#pragma once
 #include <Arduino.h>
 #include <defines.h>
 
@@ -18,6 +19,10 @@ public:
     word chemistryId();
 
 private:
+    static const byte _cmdExecute[];
+    static const byte _cmdOn[];
+    static const byte _cmdOff[];
+
     int _addr;
 
     byte _devType[LEN_IN_DeviceType];
