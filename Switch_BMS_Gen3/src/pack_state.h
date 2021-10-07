@@ -69,7 +69,7 @@ public:
     uint16_t fetTemp();
     uint16_t internalTemp();
 
-    private:
+private:
     TI _ti;
 
     byte _safetyAlert[LEN_IN_SafetyAlert];
