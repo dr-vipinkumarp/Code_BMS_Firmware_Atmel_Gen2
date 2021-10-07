@@ -75,6 +75,30 @@ void TI::_pullVersionData()
     read(CMD_CHEM_ID, LEN_CHEM_ID, _chemistryId);
 }
 
+void TI::fetOn()
+{
+  byte do_it[] = {0x2B, 0x97, 0x11};
+  byte turn_on[] = {0x2B, 0x03, 0x00};
+  Wire.beginTransmission(_addr);
+  Wire.write(do_it, 3);
+  Wire.endTransmission(true);
+  Wire.beginTransmission(_addr);
+  Wire.write(turn_on, 3);
+  Wire.endTransmission(true);
+}
+
+void TI::fetOff()
+{
+  byte do_it[] = {0x2B, 0x97, 0x11};
+  byte turn_off[] = {0x2B, 0x01, 0x00};
+  Wire.beginTransmission(_addr);
+  Wire.write(do_it, 3);
+  Wire.endTransmission(true);
+  Wire.beginTransmission(_addr);
+  Wire.write(turn_off, 3);
+  Wire.endTransmission(true);
+}
+
 word TI::devType()
 {
     return (_devType[1] << 8) + _devType[2];

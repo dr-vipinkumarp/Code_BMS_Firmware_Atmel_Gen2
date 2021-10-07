@@ -9,6 +9,8 @@ public:
     void read(byte CMD, int LEN, byte IN_DATA[]);
     void write(byte CMD, int LEN, byte OUT_DATA[]);
     void blockRead(byte CMD[], int LEN, byte IN_DATA[]);
+    void fetOn();
+    void fetOff();
 
     word devType();
     word devNum();
