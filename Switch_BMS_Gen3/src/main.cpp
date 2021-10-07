@@ -27,98 +27,12 @@ static const uint8_t DISCOVERY_MSG_SEND_TIME = DISCOVERY_MSG_LENGTH / BYTES_PER_
 static const uint16_t DISCOVERY_WINDOW_MAX_TIME = 2500;                                     // discovery window is 2.5 seconds long
 static const uint16_t DISCOVERY_WINDOW_MAX_SLOT = DISCOVERY_WINDOW_MAX_TIME / DISCOVERY_MSG_SEND_TIME;
 
-struct Version_Info
-{
-
-  word TI_DevType;
-  //byte FirmwareVersionsBuffer[10];
-  word TI_DevNum;
-  word TI_FirmwareVersion;
-  word TI_ChemistryID;
-  //byte TI_FirmwareType[2];
-  //byte TI_CEDV[2];
-  //byte TI_HW_Ver[2];
-  //byte AVR_Dev_ID[3];
-  //byte AVR_FirmwareVersion[2];
-  byte AVR_Signature[10];
-};
-
-struct Pack_State
-{
-
-  // safety variables - priority items
-  word SafetyAlert_AB;
-  word SafetyAlert_CD;
-  word SafetyStatus_AB;
-  word SafetyStatus_CD;
-  word OpStatus_A;
-  word OpStatus_B;
-  word PFStatus_AB;
-  word PFStatus_CD;
-  word PFAlert;
-  word BattMode;
-  word BattStatus;
-  byte TempStatus;
-  byte ChgStatus;
-  word GaugeStatus;
-  word MfrStatus;
-  word AFEStatus;
-
-  // control variables - influence hardware operations
-  word HostFET;
-  word GPIOStatus;
-  word GPIOControl;
-
-  // data variables - for reporting
-  //uint16_t Temperature;
-  uint16_t Voltage;
-  uint16_t VAuxVoltage;
-  uint16_t ExtAvgVoltage;
-  int16_t Current;    // signed int Changed by Viv to signed
-  int16_t AvgCurrent; // signed int Changed by Viv to signed
-  uint16_t CycleCount;
-  uint16_t CapacityRemaining;
-  uint16_t CapacityFull;
-  uint16_t RuntimeToEmpty;
-  uint16_t AvgTimeToEmpty;
-  uint16_t AvgTimeToFull;
-
-  uint8_t RelativeStateOfCharge;
-  uint8_t AbsoluteStateOfCharge;
-  uint8_t StateOfHealth;
-
-  uint16_t CellVoltage1;
-  uint16_t CellVoltage2;
-  uint16_t CellVoltage3;
-  uint16_t CellVoltage4;
-  uint16_t CellVoltage5;
-  uint16_t CellVoltage6;
-  uint16_t CellVoltage7;
-  uint16_t CellVoltage8;
-  uint16_t CellVoltage9;
-  uint16_t CellVoltage10;
-  uint16_t CellVoltage11;
-  uint16_t CellVoltage12;
-  uint16_t CellVoltage13;
-  uint16_t CellVoltage14;
-  uint16_t CellVoltage15;
-
-  uint16_t TS1Temp;
-  uint16_t TS2Temp;
-  uint16_t TS3Temp;
-  uint16_t CellTemp;
-  uint16_t FETTemp;
-  uint16_t InternalTemp;
-};
-
-struct Version_Info Versions;
-struct Pack_State Pack;
-
 TI ti(TI_Addr);
 PackState packState(ti);
 
 char PackID[(10 * 2) + 1];
 
+byte AVR_Signature[10];
 uint32_t sample_timer = 100000; // init with a large value to immediately trigger a pack data read event on boot
 
 StaticJsonDocument<40> smallpacket;
@@ -143,281 +57,6 @@ ISR(WDT_vect)
     // seconds.
     f_wdt = 1;
   }
-}
-
-//================================================================
-bool TI_Read(byte CMD, int LEN, byte IN_DATA[])
-{ // FIX -- Pass pointers for data variable
-
-  Wire.beginTransmission(TI_Addr);
-  Wire.write(CMD);
-
-  // FIX -- if LEN not zero then send follow-up commands to prompt TI to spew data, else command was a one-shot with a predictable response
-  Wire.endTransmission(false);
-  Wire.requestFrom(TI_Addr, LEN, true); // first byte through will usually be a "LENGTH" value
-
-  for (int i = 0; i < LEN; i++)
-  {                           // Array is zero indexed but first byte read seems to be an ACK before real data on block reads
-    IN_DATA[i] = Wire.read(); // FIX -- Handle for exception if variable passed as DATA is insufficient length for value passed to LEN
-  }
-  // else
-  // Wire.endTransmission(true);
-  // FIX -- read whatever was predictable about a CMD with a zero length reply
-
-  return 1;
-}
-
-void FET_ON()
-{
-  byte do_it[] = {0x2B, 0x97, 0x11};
-  byte turn_on[] = {0x2B, 0x03, 0x00};
-  Wire.beginTransmission(TI_Addr);
-  Wire.write(do_it, 3);
-  Wire.endTransmission(true);
-  Wire.beginTransmission(TI_Addr);
-  Wire.write(turn_on, 3);
-  Wire.endTransmission(true);
-}
-
-void FET_OFF()
-{
-  byte do_it[] = {0x2B, 0x97, 0x11};
-  byte turn_off[] = {0x2B, 0x01, 0x00};
-  Wire.beginTransmission(TI_Addr);
-  Wire.write(do_it, 3);
-  Wire.endTransmission(true);
-  Wire.beginTransmission(TI_Addr);
-  Wire.write(turn_off, 3);
-  Wire.endTransmission(true);
-}
-
-//================================================================
-bool TI_Write(byte CMD, int LEN, byte OUT_DATA[])
-{ // FIX -- Pass pointers for data variable
-
-  Wire.beginTransmission(TI_Addr);
-  Wire.write(CMD);
-
-  // FIX -- if LEN not zero then send follow-up commands to prompt TI to spew data, else command was a one-shot with a predictable response
-  Wire.endTransmission(false);
-  //Wire.requestFrom(TI_Addr, LEN, true);
-  //Wire.write(LEN);  // not sure if this is needed, have to eavesdrop comms to see if this helps or breaks
-
-  // do these need to be reversed?
-  for (int i = 0; i < LEN; i++)
-  {                          // Array is zero indexed but first byte read seems to be an ACK before real data on block reads
-    Wire.write(OUT_DATA[i]); // FIX -- Handle for exception if variable passed as DATA is insufficient length for value passed to LEN
-  }
-  // else
-  Wire.endTransmission(false);
-  // FIX -- read whatever was predictable about a CMD with a zero length reply
-
-  return 1;
-}
-
-//================================================================
-bool TI_BlockRead(byte CMD[], int LEN, byte IN_DATA[])
-{
-
-  Wire.beginTransmission(TI_Addr);
-  Wire.write(0x00); // manufacturer access
-  Wire.write(0x02);
-  Wire.write(0x00); // because reversed
-  Wire.write(0x44); // read block
-  Wire.endTransmission(false);
-
-  //LEN = Wire.read();  // first byte probably length (try it)
-  Wire.requestFrom(TI_Addr, LEN, true);
-
-  for (int i = 0; i < LEN; i++)
-  {                           // Array is zero indexed but first byte read seems to be an ACK before real data on block reads
-    IN_DATA[i] = Wire.read(); // FIX -- Handle for exception if variable passed as DATA is insufficient length for value passed to LEN
-  }
-  //Wire.endTransmission(true);
-}
-
-//================================================================
-bool PullTIVersionData()
-{
-
-  byte InBuf[15];
-
-  // so far no luck with this
-
-  if (TI_Read(CMD_DeviceType, LEN_IN_DeviceType, InBuf))
-  {
-    Versions.TI_DevType = (InBuf[1] << 8) + InBuf[2];
-    if (TI_BlockRead(CMD_FirmwareVersion, LEN_IN_FirmwareVersion, InBuf))
-    {
-      Versions.TI_DevNum = (InBuf[2] << 8) + InBuf[1];
-      Versions.TI_FirmwareVersion = (InBuf[4] << 8) + InBuf[3];
-      if (TI_Read(CMD_CHEM_ID, LEN_CHEM_ID, InBuf))
-      {
-        Versions.TI_ChemistryID = (InBuf[2] << 8) + InBuf[1];
-
-        return 1;
-      }
-    }
-  }
-
-  return 0;
-}
-
-//================================================================
-bool PullData()
-{ //struct Incoming_Flags FLAGS, struct Incoming_Data DATA){
-
-  byte InBuff[35];
-
-  // Flags
-  if (TI_Read(CMD_SafetyAlert, LEN_IN_SafetyAlert, InBuff))
-  {
-    Pack.SafetyAlert_AB = (InBuff[2] << 8) + InBuff[1]; // Safety Alert
-    Pack.SafetyAlert_CD = (InBuff[4] << 8) + InBuff[3];
-    if (TI_Read(CMD_SafetyStatus, LEN_IN_SafetyStatus, InBuff))
-    {
-      Pack.SafetyStatus_AB = (InBuff[2] << 8) + InBuff[1]; // Safety Status
-      Pack.SafetyStatus_CD = (InBuff[4] << 8) + InBuff[3];
-      if (TI_Read(CMD_OpStatus, LEN_IN_OpStatus, InBuff))
-      {
-        Pack.OpStatus_A = (InBuff[2] << 8) + InBuff[1]; // Operational Status
-        Pack.OpStatus_B = (InBuff[4] << 8) + InBuff[3];
-        if (TI_Read(CMD_PFStatus, LEN_IN_OpStatus, InBuff))
-        {
-          Pack.PFStatus_AB = (InBuff[2] << 8) + InBuff[1]; // Permanent Fail Status
-          Pack.PFStatus_CD = (InBuff[4] << 8) + InBuff[3];
-          if (TI_Read(CMD_BattMode, LEN_IN_BattMode, InBuff))
-          {
-            Pack.BattMode = (InBuff[1] << 8) + InBuff[0]; // Battery Mode
-            if (TI_Read(CMD_BattStatus, LEN_IN_BattStatus, InBuff))
-            {
-              Pack.BattStatus = (InBuff[1] << 8) + InBuff[0]; // Battery Status
-              if (TI_Read(CMD_ChgStatus, LEN_IN_ChgStatus, InBuff))
-              {
-                Pack.TempStatus = InBuff[1]; // Temp Status
-                Pack.ChgStatus = InBuff[2];  // Charge Status           // WARNING -- This 2x 8bit register pair is reversed
-                if (TI_Read(CMD_GaugeStatus, LEN_IN_GaugeStatus, InBuff))
-                {
-                  Pack.GaugeStatus = (InBuff[2] << 8) + InBuff[1]; // Gauge Status
-                  if (TI_Read(CMD_MfrStatus, LEN_IN_MfrStatus, InBuff))
-                  {
-                    Pack.MfrStatus = (InBuff[2] << 8) + InBuff[1]; // Manufacturer Status
-                    if (TI_Read(CMD_AFEStatus, LEN_IN_AFEStatus, InBuff))
-                    {
-                      Pack.AFEStatus = (InBuff[2] << 8) + InBuff[1]; // Analog Front End Status
-
-                      // GPIO
-                      if (TI_Read(CMD_HostFET, LEN_IN_HostFET, InBuff))
-                      {
-                        Pack.HostFET = (InBuff[1] << 8) + InBuff[0]; // Host FET control
-                        if (TI_Read(CMD_GPIOStatus, LEN_IN_GPIOStatus, InBuff))
-                        {
-                          Pack.GPIOStatus = (InBuff[1] << 8) + InBuff[0]; // GPIO Status
-                          if (TI_Read(CMD_GPIOControl, LEN_IN_GPIOControl, InBuff))
-                          {
-                            Pack.GPIOControl = (InBuff[1] << 8) + InBuff[0]; // GPIO Control
-
-                            // Pack Readings
-                            if (TI_Read(CMD_Voltage, LEN_IN_Voltage, InBuff))
-                            {
-                              Pack.Voltage = (InBuff[1] << 8) + InBuff[0]; // Voltage
-                              if (TI_Read(CMD_Current, LEN_IN_Current, InBuff))
-                              {
-                                Pack.Current = (InBuff[1] << 8) + InBuff[0]; // Current
-                                if (TI_Read(CMD_AvgCurrent, LEN_IN_AvgCurrent, InBuff))
-                                {
-                                  Pack.AvgCurrent = (InBuff[1] << 8) + InBuff[0]; // AvgCurrent
-                                  if (TI_Read(CMD_CapRemain, LEN_IN_CapRemain, InBuff))
-                                  {
-                                    Pack.CapacityRemaining = (InBuff[1] << 8) + InBuff[0]; // Remaining Capacity
-                                    if (TI_Read(CMD_CapFull, LEN_IN_CapFull, InBuff))
-                                    {
-                                      Pack.CapacityFull = (InBuff[1] << 8) + InBuff[0]; // Full Capacity
-                                      if (TI_Read(CMD_RunTTE, LEN_IN_RunTTE, InBuff))
-                                      {
-                                        Pack.RuntimeToEmpty = (InBuff[1] << 8) + InBuff[0]; // Run Time to Empty
-                                        if (TI_Read(CMD_AvgTTE, LEN_IN_AvgTTE, InBuff))
-                                        {
-                                          Pack.AvgTimeToEmpty = (InBuff[1] << 8) + InBuff[0]; // Avg Time to Empty
-                                          if (TI_Read(CMD_AvgTTF, LEN_IN_AvgTTF, InBuff))
-                                          {
-                                            Pack.AvgTimeToFull = (InBuff[1] << 8) + InBuff[0]; // Avg Time to Empty
-                                            if (TI_Read(CMD_CycleCount, LEN_IN_CycleCount, InBuff))
-                                            {
-                                              Pack.CycleCount = (InBuff[1] << 8) + InBuff[0]; // Cycle count
-                                              if (TI_Read(CMD_RelSoC, LEN_IN_RelSoC, InBuff))
-                                              {
-                                                Pack.RelativeStateOfCharge = InBuff[1]; //<<8) + Data.RelSoC[0]; // Relative State of Charge
-                                                if (TI_Read(CMD_AbsSoC, LEN_IN_AbsSoC, InBuff))
-                                                {
-                                                  Pack.AbsoluteStateOfCharge = InBuff[1]; //<<8) + Data.AbsSoC[0]; // Absolute State of Charge
-                                                  if (TI_Read(CMD_SoH, LEN_IN_SoH, InBuff))
-                                                  {
-                                                    Pack.StateOfHealth = InBuff[1]; //<<8) + Data.SoH[0]; // State of Health
-                                                    //if (TI_Read(CMD_Temperature, LEN_IN_Temperature, Temperature)) { // Temperature -- This is an averaged value anyway, DAStatus2 contains full detail
-                                                    //if (TI_Read(CMD_VAuxVoltage, LEN_IN_VAuxVoltage, VAuxVoltage)) { // VAuxVoltage -- DAStatus2 contains
-                                                    //if (TI_Read(CMD_ExtAvgVoltage, LEN_IN_ExtAvgVoltage, ExtAvgVoltage)) { // ExtAvgVoltage -- DAStatus2 contains
-
-                                                    if (TI_Read(CMD_DAStatus1, LEN_IN_DAStatus1, InBuff))
-                                                    { // Cell Voltages Data Block
-
-                                                      Pack.CellVoltage1 = (InBuff[2] << 8) + InBuff[1];
-                                                      Pack.CellVoltage2 = (InBuff[4] << 8) + InBuff[3];
-                                                      Pack.CellVoltage3 = (InBuff[6] << 8) + InBuff[5];
-                                                      Pack.CellVoltage4 = (InBuff[8] << 8) + InBuff[7];
-                                                      Pack.CellVoltage5 = (InBuff[10] << 8) + InBuff[9];
-                                                      Pack.CellVoltage6 = (InBuff[12] << 8) + InBuff[11];
-                                                      Pack.CellVoltage7 = (InBuff[14] << 8) + InBuff[13];
-                                                      Pack.CellVoltage8 = (InBuff[16] << 8) + InBuff[15];
-                                                      Pack.CellVoltage9 = (InBuff[18] << 8) + InBuff[17];
-                                                      Pack.CellVoltage10 = (InBuff[20] << 8) + InBuff[19];
-                                                      Pack.CellVoltage11 = (InBuff[22] << 8) + InBuff[21];
-                                                      Pack.CellVoltage12 = (InBuff[24] << 8) + InBuff[23];
-                                                      Pack.CellVoltage13 = (InBuff[26] << 8) + InBuff[25];
-                                                      Pack.CellVoltage14 = (InBuff[28] << 8) + InBuff[27];
-                                                      Pack.CellVoltage15 = (InBuff[30] << 8) + InBuff[29];
-
-                                                      if (TI_Read(CMD_DAStatus2, LEN_IN_DAStatus2, InBuff))
-                                                      { // Temperatures Data Block
-
-                                                        Pack.ExtAvgVoltage = (InBuff[2] << 8) + InBuff[1];
-                                                        Pack.VAuxVoltage = (InBuff[4] << 8) + InBuff[3];
-                                                        Pack.TS1Temp = (InBuff[6] << 8) + InBuff[5];
-                                                        Pack.TS2Temp = (InBuff[8] << 8) + InBuff[7];
-                                                        Pack.TS3Temp = (InBuff[10] << 8) + InBuff[9];
-                                                        Pack.CellTemp = (InBuff[12] << 8) + InBuff[11];
-                                                        Pack.FETTemp = (InBuff[14] << 8) + InBuff[13];
-                                                        Pack.InternalTemp = (InBuff[16] << 8) + InBuff[15];
-
-                                                        return 1;
-                                                      }
-                                                    }
-                                                  }
-                                                }
-                                              }
-                                            }
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  } //}}}
-  return 0;
 }
 
 //================================================================
@@ -485,7 +124,7 @@ void initRNG()
   // initiate random number generator
   // get the last 4 bits from the AVR_Signature and convert them to an int
   // xor that int with a random value from the seed
-  int serial_lsb = *((int *)&Versions.AVR_Signature[10 - 4 - 1]); // 10-4-1 == index to last 4 bits
+  int serial_lsb = *((int *)&AVR_Signature[10 - 4 - 1]); // 10-4-1 == index to last 4 bits
   int rand_seed = analogRead(A0) ^ serial_lsb;
   randomSeed(rand_seed);
 }
@@ -501,7 +140,7 @@ void setup()
   // Versions.AVR_Dev_ID[2] = boot_signature_byte_get(4);
   for (uint8_t i = 14; i < 24; i += 1)
   {
-    Versions.AVR_Signature[i - 14] = boot_signature_byte_get(i); // Read my own unique ID
+    AVR_Signature[i - 14] = boot_signature_byte_get(i); // Read my own unique ID
   }
 #endif
 
@@ -524,7 +163,7 @@ void setup()
       *
       * We don't need to add a terminating null byte because it's been already
       * added for us from the last hex string. */
-    ptr += sprintf(ptr, "%02X", Versions.AVR_Signature[i]);
+    ptr += sprintf(ptr, "%02X", AVR_Signature[i]);
   }
   packet["PackID"] = PackID;
   smallpacket["PackID"] = PackID;
@@ -562,82 +201,73 @@ void loop()
     sample_timer = 0;
 
 #ifdef LIVE_DATA
-    if (PullData())
-    {
-      packState.refresh();
+    packState.refresh();
 
-      packet["SA_AB"] = packState.safetyAlertAB();
-      packet["SA_CD"] = packState.safetyAlertCD();
-      packet["SS_AB"] = packState.safetyStatusAB();
-      packet["SS_CD"] = packState.safetyStatusCD();
-      packet["OS_A"] = packState.opStatusA();
-      packet["OS_B"] = packState.opStatusB();
-      packet["PFA_AB"] = packState.pfAlertAB();
-      packet["PFA_CD"] = packState.pfAlertCD();
-      packet["PFS_AB"] = packState.pfStatusAB();
-      packet["PFS_CD"] = packState.pfStatusCD();
-      packet["BM"] = packState.battMode();
-      packet["BS"] = packState.battStatus();
-      packet["TS"] = packState.tempStatus();
-      packet["CS"] = packState.chgStatus();
-      packet["GS"] = packState.gaugeStatus();
-      packet["MS"] = packState.mfrStatus();
-      packet["AFES"] = packState.afeStatus();
+    packet["SA_AB"] = packState.safetyAlertAB();
+    packet["SA_CD"] = packState.safetyAlertCD();
+    packet["SS_AB"] = packState.safetyStatusAB();
+    packet["SS_CD"] = packState.safetyStatusCD();
+    packet["OS_A"] = packState.opStatusA();
+    packet["OS_B"] = packState.opStatusB();
+    packet["PFA_AB"] = packState.pfAlertAB();
+    packet["PFA_CD"] = packState.pfAlertCD();
+    packet["PFS_AB"] = packState.pfStatusAB();
+    packet["PFS_CD"] = packState.pfStatusCD();
+    packet["BM"] = packState.battMode();
+    packet["BS"] = packState.battStatus();
+    packet["TS"] = packState.tempStatus();
+    packet["CS"] = packState.chgStatus();
+    packet["GS"] = packState.gaugeStatus();
+    packet["MS"] = packState.mfrStatus();
+    packet["AFES"] = packState.afeStatus();
 
-      // control variables - influence hardware operations
-      packet["HFET"] = packState.hostFET();
-      packet["GPIOS"] = packState.gpioStatus();
-      packet["GPIOC"] = packState.gpioControl();
+    // control variables - influence hardware operations
+    packet["HFET"] = packState.hostFET();
+    packet["GPIOS"] = packState.gpioStatus();
+    packet["GPIOC"] = packState.gpioControl();
 
-      // data variables - for reporting
-      //uint16_t Temperature;
-      packet["PV"] = packState.voltage();
-      packet["VAV"] = packState.vAuxVoltage();
-      packet["EAvgV"] = packState.extAvgVoltage();
-      packet["C"] = packState.current();
-      packet["AvgC"] = packState.avgCurrent();
-      packet["Cycles"] = packState.cycleCount();
-      packet["CapRemain"] = packState.capacityRemaining();
-      packet["CapFull"] = packState.capacityFull();
-      packet["RTE"] = packState.runtimeToEmpty();
-      packet["ATTE"] = packState.avgTimeToEmpty();
-      packet["ATTF"] = packState.avgTimeToFull();
+    // data variables - for reporting
+    //uint16_t Temperature;
+    packet["PV"] = packState.voltage();
+    packet["VAV"] = packState.vAuxVoltage();
+    packet["EAvgV"] = packState.extAvgVoltage();
+    packet["C"] = packState.current();
+    packet["AvgC"] = packState.avgCurrent();
+    packet["Cycles"] = packState.cycleCount();
+    packet["CapRemain"] = packState.capacityRemaining();
+    packet["CapFull"] = packState.capacityFull();
+    packet["RTE"] = packState.runtimeToEmpty();
+    packet["ATTE"] = packState.avgTimeToEmpty();
+    packet["ATTF"] = packState.avgTimeToFull();
 
-      packet["RelSoC"] = packState.relativeStateOfCharge();
-      packet["AbsSoC"] = packState.absoluteStateOfCharge();
-      packet["SoH"] = packState.stateOfHealth();
+    packet["RelSoC"] = packState.relativeStateOfCharge();
+    packet["AbsSoC"] = packState.absoluteStateOfCharge();
+    packet["SoH"] = packState.stateOfHealth();
 
-      packet["CV1"] = packState.cellVoltage1();
-      packet["CV2"] = packState.cellVoltage2();
-      packet["CV3"] = packState.cellVoltage3();
-      packet["CV4"] = packState.cellVoltage4();
-      packet["CV5"] = packState.cellVoltage5();
-      packet["CV6"] = packState.cellVoltage6();
-      packet["CV7"] = packState.cellVoltage7();
-      packet["CV8"] = packState.cellVoltage8();
-      packet["CV9"] = packState.cellVoltage9();
-      packet["CV10"] = packState.cellVoltage10();
-      packet["CV11"] = packState.cellVoltage11();
-      packet["CV12"] = packState.cellVoltage12();
-      packet["CV13"] = packState.cellVoltage13();
-      packet["CV14"] = packState.cellVoltage14();
-      packet["CV15"] = packState.cellVoltage15();
+    packet["CV1"] = packState.cellVoltage1();
+    packet["CV2"] = packState.cellVoltage2();
+    packet["CV3"] = packState.cellVoltage3();
+    packet["CV4"] = packState.cellVoltage4();
+    packet["CV5"] = packState.cellVoltage5();
+    packet["CV6"] = packState.cellVoltage6();
+    packet["CV7"] = packState.cellVoltage7();
+    packet["CV8"] = packState.cellVoltage8();
+    packet["CV9"] = packState.cellVoltage9();
+    packet["CV10"] = packState.cellVoltage10();
+    packet["CV11"] = packState.cellVoltage11();
+    packet["CV12"] = packState.cellVoltage12();
+    packet["CV13"] = packState.cellVoltage13();
+    packet["CV14"] = packState.cellVoltage14();
+    packet["CV15"] = packState.cellVoltage15();
 
-      packet["TS1Temp"] = packState.ts1Temp();
-      packet["TS2Temp"] = packState.ts2Temp();
-      packet["TS3Temp"] = packState.ts3Temp();
-      packet["CellTemp"] = packState.cellTemp();
-      packet["FETTemp"] = packState.fetTemp();
-      packet["InTemp"] = packState.internalTemp();
-      packet["FWVer"] = Atmel_FW_Version;
+    packet["TS1Temp"] = packState.ts1Temp();
+    packet["TS2Temp"] = packState.ts2Temp();
+    packet["TS3Temp"] = packState.ts3Temp();
+    packet["CellTemp"] = packState.cellTemp();
+    packet["FETTemp"] = packState.fetTemp();
+    packet["InTemp"] = packState.internalTemp();
+    packet["FWVer"] = Atmel_FW_Version;
 
-      //serializeJson(packet, Serial);
-      //Serial.println();
-    }
-    else
-    {
-      // flag fault with BMS
-    }
 #endif
 
 #ifdef DEBUG_OUTPUT
