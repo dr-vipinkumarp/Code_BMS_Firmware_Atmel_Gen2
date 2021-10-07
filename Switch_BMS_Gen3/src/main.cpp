@@ -123,7 +123,6 @@ uint32_t sample_timer = 100000; // init with a large value to immediately trigge
 
 StaticJsonDocument<40> smallpacket;
 StaticJsonDocument<480> packet;
-StaticJsonDocument<480> newpacket;
 char incomingBuffer[50];
 int bufferIndex = 0;
 bool NewPacket = false;
@@ -528,7 +527,6 @@ void setup()
     ptr += sprintf(ptr, "%02X", Versions.AVR_Signature[i]);
   }
   packet["PackID"] = PackID;
-  newpacket["PackID"] = PackID;
   smallpacket["PackID"] = PackID;
   // {"PackID","5042394E3530690E1023"}
 
@@ -566,136 +564,69 @@ void loop()
 #ifdef LIVE_DATA
     if (PullData())
     {
-
-      packet["SA_AB"] = Pack.SafetyAlert_AB;
-      packet["SA_CD"] = Pack.SafetyAlert_CD;
-      packet["SS_AB"] = Pack.SafetyStatus_AB;
-      packet["SS_CD"] = Pack.SafetyStatus_CD;
-      packet["OS_A"] = Pack.OpStatus_A;
-      packet["OS_B"] = Pack.OpStatus_B;
-      packet["PFS_AB"] = Pack.PFStatus_AB;
-      packet["PFS_CD"] = Pack.PFStatus_CD;
+      packet["SA_AB"] = packState.safetyAlertAB();
+      packet["SA_CD"] = packState.safetyAlertCD();
+      packet["SS_AB"] = packState.safetyStatusAB();
+      packet["SS_CD"] = packState.safetyStatusCD();
+      packet["OS_A"] = packState.opStatusA();
+      packet["OS_B"] = packState.opStatusB();
+      packet["PFS_AB"] = packState.pfStatusAB();
+      packet["PFS_CD"] = packState.pfStatusCD();
       // packet["PFA"] = Pack.PFAlert;
-      packet["BM"] = Pack.BattMode;
-      packet["BS"] = Pack.BattStatus;
-      packet["TS"] = Pack.TempStatus;
-      packet["CS"] = Pack.ChgStatus;
-      packet["GS"] = Pack.GaugeStatus;
-      packet["MS"] = Pack.MfrStatus;
-      packet["AFES"] = Pack.AFEStatus;
+      packet["BM"] = packState.battMode();
+      packet["BS"] = packState.battStatus();
+      packet["TS"] = packState.tempStatus();
+      packet["CS"] = packState.chgStatus();
+      packet["GS"] = packState.gaugeStatus();
+      packet["MS"] = packState.mfrStatus();
+      packet["AFES"] = packState.afeStatus();
 
       // control variables - influence hardware operations
-      packet["HFET"] = Pack.HostFET;
-      packet["GPIOS"] = Pack.GPIOStatus;
-      packet["GPIOC"] = Pack.GPIOControl;
+      packet["HFET"] = packState.hostFET();
+      packet["GPIOS"] = packState.gpioStatus();
+      packet["GPIOC"] = packState.gpioControl();
 
       // data variables - for reporting
       //uint16_t Temperature;
-      packet["PV"] = Pack.Voltage;
-      packet["VAV"] = Pack.VAuxVoltage;
-      packet["EAvgV"] = Pack.ExtAvgVoltage;
-      packet["C"] = Pack.Current;
-      packet["AvgC"] = Pack.AvgCurrent;
-      packet["Cycles"] = Pack.CycleCount;
-      packet["CapRemain"] = Pack.CapacityRemaining;
-      packet["CapFull"] = Pack.CapacityFull;
-      packet["RTE"] = Pack.RuntimeToEmpty;
-      packet["ATTE"] = Pack.AvgTimeToEmpty;
-      packet["ATTF"] = Pack.AvgTimeToFull;
+      packet["PV"] = packState.voltage();
+      packet["VAV"] = packState.vAuxVoltage();
+      packet["EAvgV"] = packState.extAvgVoltage();
+      packet["C"] = packState.current();
+      packet["AvgC"] = packState.avgCurrent();
+      packet["Cycles"] = packState.cycleCount();
+      packet["CapRemain"] = packState.capacityRemaining();
+      packet["CapFull"] = packState.capacityFull();
+      packet["RTE"] = packState.runtimeToEmpty();
+      packet["ATTE"] = packState.avgTimeToEmpty();
+      packet["ATTF"] = packState.avgTimeToFull();
 
-      packet["RelSoC"] = Pack.RelativeStateOfCharge;
-      packet["AbsSoC"] = Pack.AbsoluteStateOfCharge;
-      packet["SoH"] = Pack.StateOfHealth;
+      packet["RelSoC"] = packState.relativeStateOfCharge();
+      packet["AbsSoC"] = packState.absoluteStateOfCharge();
+      packet["SoH"] = packState.stateOfHealth();
 
-      packet["CV1"] = Pack.CellVoltage1;
-      packet["CV2"] = Pack.CellVoltage2;
-      packet["CV3"] = Pack.CellVoltage3;
-      packet["CV4"] = Pack.CellVoltage4;
-      packet["CV5"] = Pack.CellVoltage5;
-      packet["CV6"] = Pack.CellVoltage6;
-      packet["CV7"] = Pack.CellVoltage7;
-      packet["CV8"] = Pack.CellVoltage8;
-      packet["CV9"] = Pack.CellVoltage9;
-      packet["CV10"] = Pack.CellVoltage10;
-      packet["CV11"] = Pack.CellVoltage11;
-      packet["CV12"] = Pack.CellVoltage12;
-      packet["CV13"] = Pack.CellVoltage13;
-      packet["CV14"] = Pack.CellVoltage14;
-      packet["CV15"] = Pack.CellVoltage15;
+      packet["CV1"] = packState.cellVoltage1();
+      packet["CV2"] = packState.cellVoltage2();
+      packet["CV3"] = packState.cellVoltage3();
+      packet["CV4"] = packState.cellVoltage4();
+      packet["CV5"] = packState.cellVoltage5();
+      packet["CV6"] = packState.cellVoltage6();
+      packet["CV7"] = packState.cellVoltage7();
+      packet["CV8"] = packState.cellVoltage8();
+      packet["CV9"] = packState.cellVoltage9();
+      packet["CV10"] = packState.cellVoltage10();
+      packet["CV11"] = packState.cellVoltage11();
+      packet["CV12"] = packState.cellVoltage12();
+      packet["CV13"] = packState.cellVoltage13();
+      packet["CV14"] = packState.cellVoltage14();
+      packet["CV15"] = packState.cellVoltage15();
 
-      packet["TS1Temp"] = Pack.TS1Temp;
-      packet["TS2Temp"] = Pack.TS2Temp;
-      packet["TS3Temp"] = Pack.TS3Temp;
-      packet["CellTemp"] = Pack.CellTemp;
-      packet["FETTemp"] = Pack.FETTemp;
-      packet["InTemp"] = Pack.InternalTemp;
+      packet["TS1Temp"] = packState.ts1Temp();
+      packet["TS2Temp"] = packState.ts2Temp();
+      packet["TS3Temp"] = packState.ts3Temp();
+      packet["CellTemp"] = packState.cellTemp();
+      packet["FETTemp"] = packState.fetTemp();
+      packet["InTemp"] = packState.internalTemp();
       packet["FWVer"] = Atmel_FW_Version;
-
-
-
-      newpacket["SA_AB"] = packState.safetyAlertAB();
-      newpacket["SA_CD"] = packState.safetyAlertCD();
-      newpacket["SS_AB"] = packState.safetyStatusAB();
-      newpacket["SS_CD"] = packState.safetyStatusCD();
-      newpacket["OS_A"] = packState.opStatusA();
-      newpacket["OS_B"] = packState.opStatusB();
-      newpacket["PFS_AB"] = packState.pfStatusAB();
-      newpacket["PFS_CD"] = packState.pfStatusCD();
-      // newpacket["PFA"] = Pack.PFAlert;
-      newpacket["BM"] = packState.battMode();
-      newpacket["BS"] = packState.battStatus();
-      newpacket["TS"] = packState.tempStatus();
-      newpacket["CS"] = packState.chgStatus();
-      newpacket["GS"] = packState.gaugeStatus();
-      newpacket["MS"] = packState.mfrStatus();
-      newpacket["AFES"] = packState.afeStatus();
-
-      // control variables - influence hardware operations
-      newpacket["HFET"] = packState.hostFET();
-      newpacket["GPIOS"] = packState.gpioStatus();
-      newpacket["GPIOC"] = packState.gpioControl();
-
-      // data variables - for reporting
-      //uint16_t Temperature;
-      newpacket["PV"] = packState.voltage();
-      newpacket["VAV"] = packState.vAuxVoltage();
-      newpacket["EAvgV"] = packState.extAvgVoltage();
-      newpacket["C"] = packState.current();
-      newpacket["AvgC"] = packState.avgCurrent();
-      newpacket["Cycles"] = packState.cycleCount();
-      newpacket["CapRemain"] = packState.capacityRemaining();
-      newpacket["CapFull"] = packState.capacityFull();
-      newpacket["RTE"] = packState.runtimeToEmpty();
-      newpacket["ATTE"] = packState.avgTimeToEmpty();
-      newpacket["ATTF"] = packState.avgTimeToFull();
-
-      newpacket["RelSoC"] = packState.relativeStateOfCharge();
-      newpacket["AbsSoC"] = packState.absoluteStateOfCharge();
-      newpacket["SoH"] = packState.stateOfHealth();
-
-      newpacket["CV1"] = packState.cellVoltage1();
-      newpacket["CV2"] = packState.cellVoltage2();
-      newpacket["CV3"] = packState.cellVoltage3();
-      newpacket["CV4"] = packState.cellVoltage4();
-      newpacket["CV5"] = packState.cellVoltage5();
-      newpacket["CV6"] = packState.cellVoltage6();
-      newpacket["CV7"] = packState.cellVoltage7();
-      newpacket["CV8"] = packState.cellVoltage8();
-      newpacket["CV9"] = packState.cellVoltage9();
-      newpacket["CV10"] = packState.cellVoltage10();
-      newpacket["CV11"] = packState.cellVoltage11();
-      newpacket["CV12"] = packState.cellVoltage12();
-      newpacket["CV13"] = packState.cellVoltage13();
-      newpacket["CV14"] = packState.cellVoltage14();
-      newpacket["CV15"] = packState.cellVoltage15();
-
-      newpacket["TS1Temp"] = packState.ts1Temp();
-      newpacket["TS2Temp"] = packState.ts2Temp();
-      newpacket["TS3Temp"] = packState.ts3Temp();
-      newpacket["CellTemp"] = packState.cellTemp();
-      newpacket["FETTemp"] = packState.fetTemp();
-      newpacket["InTemp"] = packState.internalTemp();
-      newpacket["FWVer"] = Atmel_FW_Version;
 
       //serializeJson(packet, Serial);
       //Serial.println();
@@ -932,7 +863,6 @@ void loop()
             {
               // send a full data packet
               serializeJson(packet, Serial); // TODO: change this from Serial to a buffer out_str
-              serializeJson(newpacket, Serial);
             }
           }
           if (addressedToMe)
